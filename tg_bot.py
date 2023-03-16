@@ -1,3 +1,4 @@
+import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -6,6 +7,11 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
+import logging 
+
+
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Backery:
     def __init__(self, token):
@@ -51,15 +57,15 @@ class Backery:
        
         # Add ConversationHandler to application that will be used for handling updates
         self.manager.add_handler(self.menu_handler)
-        # self.manager.add_handler(CommandHandler('start', self.start))
 
     def start_to_work(self):
         # Run the bot until the user presses Ctrl-C
         self.manager.run_polling()
 
     # menu
-
     def init(self, context) -> None:
+        self.load_menu()
+
         context.user_data["stock"] = {}
         context.user_data["order"] = {}
        
@@ -121,15 +127,18 @@ class Backery:
             ],
         ]
         context.user_data["inventory_keyboard"] = [
-            [
-                InlineKeyboardButton("巧克麵包", callback_data="0"),
-            ],
-            [
-                InlineKeyboardButton("松露麵包", callback_data="1"),
-            ],
-            [
-                InlineKeyboardButton("完成", callback_data="done"),
-            ]
+            [InlineKeyboardButton(info["name"], callback_data=idx)] for idx, info in sorted(self.store_menu.items())  
+
+
+            # [
+                # InlineKeyboardButton("巧克麵包", callback_data="0"),
+            # ],
+            # [
+                # InlineKeyboardButton("松露麵包", callback_data="1"),
+            # ],
+            # [
+                # InlineKeyboardButton("完成", callback_data="done"),
+            # ]
         ]
         context.user_data["commodity_keyboard"] = [
             [
@@ -143,7 +152,14 @@ class Backery:
             ]
         ]
 
+    def load_menu(self):
+        with open("menu.json", "r", encoding='utf8') as f:
+            self.store_menu = json.load(f)
+
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        user = update.message.from_user
+        logger.info("User %s started the conversation.", user.first_name)
+
         self.init(context) 
         reply_markup = InlineKeyboardMarkup(context.user_data["menu_keyboard"])
         await update.message.reply_text("你想做啥？", reply_markup=reply_markup)
